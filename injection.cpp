@@ -1,6 +1,7 @@
 #include "booksim.hpp"
 #include <map>
-#include <assert.h>
+#include <cassert>
+#include <cstdlib>
 
 #include "injection.hpp"
 #include "network.hpp"

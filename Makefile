@@ -1,9 +1,9 @@
 
-CPP    = /usr/pubsw/bin/g++
-YACC   = /usr/pubsw/bin/bison -d
-LEX    = /usr/pubsw/bin/flex
-PURIFY = /usr/pubsw/bin/purify
-QUANT  = /usr/pubsw/bin/quantify
+CPP    = /usr/bin/g++
+YACC   = /usr/bin/bison -d
+LEX    = /usr/bin/flex
+PURIFY = /usr/bin/purify
+QUANT  = /usr/bin/quantify
 
 #CPPFLAGS = -g -Wall
 CPPFLAGS = -O3
@@ -58,10 +58,10 @@ $(PROG): $(OBJS)
 	$(CPP) $(OBJS) -o $(PROG)
 
 purify: $(OBJS)
-	$(PURIFY) -always-use-cache-dir $(CPP) $(OBJS) -o $(PROG) -L/usr/pubsw/lib
+	$(PURIFY) -always-use-cache-dir $(CPP) $(OBJS) -o $(PROG) -L/usr/lib
 
 quantify: $(OBJS)
-	$(QUANT) -always-use-cache-dir $(CPP) $(OBJS) -o $(PROG) -L/usr/pubsw/lib
+	$(QUANT) -always-use-cache-dir $(CPP) $(OBJS) -o $(PROG) -L/usr/lib
 
 %lex.o: %lex.cpp %_tab.hpp
 	$(CPP) $(CPPFLAGS) -c $< -o $@

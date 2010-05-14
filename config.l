@@ -15,7 +15,7 @@ extern int config_input(char *, int);
 #undef YY_INPUT
 #define YY_INPUT(b, r, ms) (r = config_input(b, ms))
 
-unsigned int configlineno = 1;
+unsigned int lineno = 1;
 
 %}
 
@@ -26,7 +26,7 @@ unsigned int configlineno = 1;
 \/\/[^\n]* ;
 [ \t\r]*   ;
 
-\n         { configlineno++; }
+\n         { lineno++; }
 
    /* Commands */
 
@@ -42,7 +42,7 @@ unsigned int configlineno = 1;
 
 void configerror( string msg )
 {
-  Configuration::GetTheConfig( )->ParseError( msg, configlineno );
+  Configuration::GetTheConfig( )->ParseError( msg, lineno );
 }
 
 
