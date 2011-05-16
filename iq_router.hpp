@@ -18,7 +18,7 @@ class IQRouter : public Router {
   int _vc_size;
 
   VC          **_vc;
-  BufferState *_next_vcs;
+  BufferState **_next_vcs;
 
   Allocator *_vc_allocator;
   Allocator *_sw_allocator;

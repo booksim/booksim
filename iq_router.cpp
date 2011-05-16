@@ -26,25 +26,25 @@ IQRouter::IQRouter( const Configuration& config,
 
   // Alloc VC's
 
-  _vc = new VC * [_inputs];
+  _vc = new VC * [_inputs*_vcs];
 
   for ( int i = 0; i < _inputs; ++i ) {
-    _vc[i] = new VC [_vcs] ( config, _outputs );
-
     for ( int v = 0; v < _vcs; ++v ) { // Name the vc modules
+      _vc[i*_vcs+v] = new VC( config, _outputs );
       vc_name << "vc_i" << i << "_v" << v;
-      _vc[i][v].SetName( this, vc_name.str( ) );
+      _vc[i*_vcs+v]->SetName( this, vc_name.str( ) );
       vc_name.seekp( 0, ios::beg );
     }
   }
 
   // Alloc next VCs' buffer state
 
-  _next_vcs = new BufferState [_outputs] ( config );
+  _next_vcs = new BufferState * [_outputs];
 
   for ( int o = 0; o < _outputs; ++o ) {
+    _next_vcs[o] = new BufferState( config );
     vc_name << "next_vc_o" << o;
-    _next_vcs[o].SetName( this, vc_name.str( ) );
+    _next_vcs[o]->SetName( this, vc_name.str( ) );
     vc_name.seekp( 0, ios::beg );
   }
 
@@ -117,10 +117,15 @@ IQRouter::IQRouter( const Configuration& config,
 IQRouter::~IQRouter( )
 {
   for ( int i = 0; i < _inputs; ++i ) {
-    delete [] _vc[i];
+    for ( int v = 0; v < _vcs; ++v) {
+      delete _vc[i*_vcs+v];
+    }
   }
-
   delete [] _vc;
+
+  for ( int o = 0; o < _outputs; ++o) {
+    delete _next_vcs[o];
+  }
   delete [] _next_vcs;
 
   delete _vc_allocator;
@@ -157,7 +162,7 @@ void IQRouter::InternalStep( )
 
   for ( int input = 0; input < _inputs; ++input ) {
     for ( int vc = 0; vc < _vcs; ++vc ) {
-      _vc[input][vc].AdvanceTime( );
+      _vc[input*_vcs+vc]->AdvanceTime( );
     }
   }
 
@@ -210,7 +215,7 @@ void IQRouter::_InputQueuing( )
       f = _input_buffer[input].front( );
       _input_buffer[input].pop( );
 
-      cur_vc = &_vc[input][f->vc];
+      cur_vc = _vc[input*_vcs+f->vc];
 
       if ( !cur_vc->AddFlit( f ) ) {
 	Error( "VC buffer overflow" );
@@ -226,7 +231,7 @@ void IQRouter::_InputQueuing( )
   for ( int input = 0; input < _inputs; ++input ) {
     for ( int vc = 0; vc < _vcs; ++vc ) {
 
-      cur_vc = &_vc[input][vc];
+      cur_vc = _vc[input*_vcs+vc];
       
       if ( cur_vc->GetState( ) == VC::idle ) {
 	f = cur_vc->FrontFlit( );
@@ -248,7 +253,7 @@ void IQRouter::_InputQueuing( )
       c = _out_cred_buffer[output].front( );
       _out_cred_buffer[output].pop( );
    
-      _next_vcs[output].ProcessCredit( c );
+      _next_vcs[output]->ProcessCredit( c );
       delete c;
     }
   }
@@ -261,7 +266,7 @@ void IQRouter::_Route( )
   for ( int input = 0; input < _inputs; ++input ) {
     for ( int vc = 0; vc < _vcs; ++vc ) {
 
-      cur_vc = &_vc[input][vc];
+      cur_vc = _vc[input*_vcs+vc];
 
       if ( ( cur_vc->GetState( ) == VC::routing ) &&
 	   ( cur_vc->GetStateTime( ) >= _routing_delay ) ) {
@@ -284,7 +289,7 @@ void IQRouter::_AddVCRequests( VC* cur_vc, int input_index, bool watch )
 
   for ( int output = 0; output < _outputs; ++output ) {
     vc_cnt = route_set->NumVCs( output );
-    dest_vc = &_next_vcs[output];
+    dest_vc = _next_vcs[output];
 
     for ( int vc_index = 0; vc_index < vc_cnt; ++vc_index ) {
       out_vc = route_set->GetVC( output, vc_index, &in_priority );
@@ -330,7 +335,7 @@ void IQRouter::_VCAlloc( )
   for ( int input = 0; input < _inputs; ++input ) {
     for ( int vc = 0; vc < _vcs; ++vc ) {
 
-      cur_vc = &_vc[input][vc];
+      cur_vc = _vc[input*_vcs+vc];
 
       if ( ( cur_vc->GetState( ) == VC::vc_alloc ) &&
 	   ( cur_vc->GetStateTime( ) >= _vc_alloc_delay ) ) {
@@ -364,8 +369,8 @@ void IQRouter::_VCAlloc( )
 	match_input = input_and_vc / _vcs;
 	match_vc    = input_and_vc - match_input*_vcs;
 
-	cur_vc  = &_vc[match_input][match_vc];
-	dest_vc = &_next_vcs[output];
+	cur_vc  = _vc[match_input*_vcs+match_vc];
+	dest_vc = _next_vcs[output];
 
 	cur_vc->SetState( VC::active );
 	cur_vc->SetOutput( output, vc );
@@ -419,12 +424,12 @@ void IQRouter::_SWAlloc( )
 	  continue;
 	}
 	
-	cur_vc = &_vc[input][vc];
+	cur_vc = _vc[input*_vcs+vc];
 	
 	if ( ( cur_vc->GetState( ) == VC::active ) && 
 	     ( !cur_vc->Empty( ) ) ) {
 	  
-	  dest_vc = &_next_vcs[cur_vc->GetOutputPort( )];
+	  dest_vc = _next_vcs[cur_vc->GetOutputPort( )];
 	  
 	  if ( !dest_vc->IsFullFor( cur_vc->GetOutputVC( ) ) ) {
 	    
@@ -474,7 +479,7 @@ void IQRouter::_SWAlloc( )
       if ( _switch_hold_in[expanded_input] != -1 ) {
 	expanded_output = _switch_hold_in[expanded_input];
 	vc = _switch_hold_vc[expanded_input];
-	cur_vc = &_vc[input][vc];
+	cur_vc = _vc[input*_vcs+vc];
 	
 	if ( cur_vc->Empty( ) ) { // Cancel held match if VC is empty
 	  expanded_output = -1;
@@ -488,7 +493,7 @@ void IQRouter::_SWAlloc( )
 
 	if ( _switch_hold_in[expanded_input] == -1 ) {
 	  vc = _sw_allocator->ReadRequest( expanded_input, expanded_output );
-	  cur_vc = &_vc[input][vc];
+	  cur_vc = _vc[input*_vcs+vc];
 	}
 
 	if ( _hold_switch_for_packet ) {
@@ -501,7 +506,7 @@ void IQRouter::_SWAlloc( )
 		( !cur_vc->Empty( ) ) && 
 		( cur_vc->GetOutputPort( ) == ( expanded_output % _outputs ) ) );
 	
-	dest_vc = &_next_vcs[cur_vc->GetOutputPort( )];
+	dest_vc = _next_vcs[cur_vc->GetOutputPort( )];
 	
 	assert( !dest_vc->IsFullFor( cur_vc->GetOutputVC( ) ) );
 	
@@ -605,7 +610,7 @@ void IQRouter::Display( ) const
 {
   for ( int input = 0; input < _inputs; ++input ) {
     for ( int v = 0; v < _vcs; ++v ) {
-      _vc[input][v].Display( );
+      _vc[input*_vcs+v]->Display( );
     }
   }
 }

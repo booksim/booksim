@@ -75,7 +75,7 @@ class EventRouter : public Router {
 
   tRoutingFunction   _rf;
 
-  EventNextVCState *_output_state;
+  EventNextVCState **_output_state;
 
   PipelineFIFO<Flit>   *_crossbar_pipe;
   PipelineFIFO<Credit> *_credit_pipe;
