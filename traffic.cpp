@@ -131,7 +131,7 @@ int tornado( int source, int total_nodes )
 
   for ( int n = 0; n < gN; ++n ) {
     dest += offset *
-      ( ( ( source / offset ) % gK + ( gK/2 - 1 ) ) % gK );
+      ( ( ( source / offset ) % gK + ( ( gK + 1 ) / 2 - 1 ) ) % gK );
     offset *= gK;
   }
 
