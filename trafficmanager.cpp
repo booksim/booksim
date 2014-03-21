@@ -963,7 +963,7 @@ bool TrafficManager::_SingleSim( )
 	 ( ( _sim_state != running ) || 
 	   ( converged < 3 ) ) ) {
 
-    if ( clear_last || ( ( _sim_state == warming_up ) && ( total_phases & 0x1 == 0 ) ) ) {
+    if ( clear_last || ( ( _sim_state == warming_up ) && ( ( total_phases & 0x1 ) == 0 ) ) ) {
       clear_last = false;
       _ClearStats( );
     }
